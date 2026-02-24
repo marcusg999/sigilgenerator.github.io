@@ -1,201 +1,237 @@
-<html><head>
-<title>SigilCraft: Modern 3D Sigil Creator</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SigilCraft: Modern 3D Sigil Creator</title>
 
-  :root {
-    --primary-color: #6200EE;
-    --secondary-color: #03DAC6;
-    --background-color: #121212;
-    --surface-color: #1E1E1E;
-    --on-surface-color: #FFFFFF;
-  }
+  <!-- Initialise theme before first paint to prevent flash -->
+  <script>
+    (function () {
+      var saved = localStorage.getItem('sc-theme');
+      if (saved === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 
-  body {
-    font-family: 'Roboto', sans-serif;
-    background-color: var(--background-color);
-    color: var(--on-surface-color);
-    margin: 0;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-height: 100vh;
-    touch-action: manipulation;
-  }
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
-  h1 {
-    font-size: 2em;
-    font-weight: 300;
-    margin-bottom: 20px;
-    text-align: center;
-    color: var(--secondary-color);
-  }
+  <!-- Tailwind CSS (Play CDN – no build step) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
 
-  .content-wrapper {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: flex-start;
-    width: 100%;
-    max-width: 1200px;
-  }
+  <!-- Three.js (must be before inline app script) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- GSAP (must be before inline app script so `gsap` is defined when used) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
 
-  .left-column, .right-column {
-    flex: 1;
-    min-width: 300px;
-    max-width: 600px;
-    margin: 0 10px 20px;
-  }
-
-  #canvas-container, #threeDContainer {
-    width: 100%;
-    height: 0;
-    padding-bottom: 100%;
-    max-width: 400px;
-    max-height: 400px;
-    margin-bottom: 20px;
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    position: relative;
-  }
-
-  #canvas, #threeDContainer canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: var(--surface-color);
-    touch-action: none;
-  }
-
-  #controls {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 400px;
-  }
-
-  input, button {
-    margin: 10px 0;
-    padding: 12px;
-    font-size: 1em;
-    background-color: var(--surface-color);
-    color: var(--on-surface-color);
-    border: none;
-    border-radius: 5px;
-    width: 100%;
-    box-sizing: border-box;
-    transition: all 0.3s ease;
-  }
-
-  input {
-    border-bottom: 2px solid var(--primary-color);
-  }
-
-  input:focus {
-    outline: none;
-    border-bottom-color: var(--secondary-color);
-  }
-
-  button {
-    background-color: var(--primary-color);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    cursor: pointer;
-  }
-
-  button:hover, button:active {
-    background-color: var(--secondary-color);
-    color: var(--background-color);
-  }
-
-  #intentionDisplay {
-    margin-top: 20px;
-    font-size: 1.1em;
-    font-weight: 300;
-    text-align: center;
-    width: 100%;
-    max-width: 400px;
-  }
-
-  @media (max-width: 768px) {
-    .content-wrapper {
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .left-column, .right-column {
+  <style>
+    /* Square canvas containers using aspect-ratio */
+    #canvas-container,
+    #threeDContainer {
+      position: relative;
       width: 100%;
-      max-width: 400px;
-      margin: 0 0 20px;
+      aspect-ratio: 1 / 1;
     }
 
-    h1 {
-      font-size: 1.5em;
+    /* Canvas elements fill their container */
+    #canvas,
+    #threeDContainer canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
     }
 
-    input, button {
-      font-size: 0.9em;
+    /* Drawing canvas – subtle tinted background */
+    #canvas {
+      background: rgba(3, 218, 198, 0.04);
+      border-radius: inherit;
     }
-  }
-</style>
+
+    /* Glassmorphism panel (light mode) */
+    .glass {
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Glassmorphism panel (dark mode) */
+    .dark .glass {
+      background: rgba(15, 15, 30, 0.55);
+      border-color: rgba(255, 255, 255, 0.09);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+    }
+
+    /* Clear focus rings for keyboard navigation */
+    :focus-visible {
+      outline: 2px solid #2dd4bf;
+      outline-offset: 2px;
+      border-radius: 6px;
+    }
+  </style>
 </head>
-<body>
-  <h1>SigilCraft: Modern 3D Sigil Creator</h1>
-  
-  <div class="content-wrapper">
-    <div class="left-column">
-      <div id="canvas-container">
-        <canvas id="canvas"></canvas>
+
+<body class="min-h-screen bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 dark:from-gray-950 dark:via-slate-900 dark:to-indigo-950 text-gray-900 dark:text-white transition-colors duration-300 font-sans">
+
+  <!-- ── Header ─────────────────────────────────────────────────────── -->
+  <header class="sticky top-0 z-20 glass border-b border-white/50 dark:border-white/10 px-5 py-3 flex items-center justify-between">
+    <span class="text-lg font-semibold tracking-wide text-teal-600 dark:text-teal-400 select-none">✦ SigilCraft</span>
+    <button
+      id="themeToggle"
+      aria-label="Toggle light/dark mode"
+      class="w-10 h-10 rounded-full glass flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+    >
+      <span id="themeIcon" class="text-base select-none" aria-hidden="true">🌙</span>
+    </button>
+  </header>
+
+  <!-- Aria-live region for status announcements (screen-reader only) -->
+  <div id="a11y-live" role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
+
+  <!-- ── Main content ───────────────────────────────────────────────── -->
+  <main class="max-w-5xl mx-auto w-full px-4 py-6 flex flex-col lg:flex-row gap-6 items-start justify-center">
+
+    <!-- Left column: drawing canvas + controls -->
+    <div class="w-full lg:w-1/2 flex flex-col gap-4">
+
+      <!-- Drawing canvas panel -->
+      <div class="glass rounded-2xl overflow-hidden">
+        <div id="canvas-container">
+          <canvas id="canvas" role="img" aria-label="Sigil drawing canvas – draw here with mouse or touch"></canvas>
+        </div>
       </div>
-      
-      <div id="controls">
-        <input type="text" id="intentionInput" placeholder="Enter your intention">
-        <button id="createSigil">Create 3D Sigil</button>
-        <button id="clearCanvas">Clear Canvas</button>
-        <button id="releaseSigil">Release Sigil</button>
+
+      <!-- Controls panel -->
+      <div id="controls" class="glass rounded-2xl p-5 flex flex-col gap-3">
+
+        <div>
+          <label for="intentionInput" class="block text-sm font-medium text-gray-600 dark:text-gray-300 mb-1">
+            Your Intention
+          </label>
+          <input
+            type="text"
+            id="intentionInput"
+            placeholder="e.g. Peace, Clarity, Strength"
+            autocomplete="off"
+            class="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-white/5 border border-white/60 dark:border-white/10 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-teal-400 focus:ring-2 focus:ring-teal-400/30 focus:outline-none transition"
+          >
+        </div>
+
+        <button
+          id="createSigil"
+          class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-medium tracking-wide transition"
+        >
+          Create 3D Sigil
+        </button>
+
+        <button
+          id="clearCanvas"
+          class="w-full py-3 px-4 rounded-xl bg-white/30 dark:bg-white/5 hover:bg-white/50 dark:hover:bg-white/10 border border-white/40 dark:border-white/10 text-gray-800 dark:text-gray-200 font-medium tracking-wide transition"
+        >
+          Clear Canvas
+        </button>
+
+        <button
+          id="releaseSigil"
+          class="w-full py-3 px-4 rounded-xl bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-medium tracking-wide transition"
+        >
+          Release Sigil
+        </button>
       </div>
-      
-      <div id="intentionDisplay"></div>
+
+      <!-- Intention status (also an aria-live region so changes are announced) -->
+      <p
+        id="intentionDisplay"
+        aria-live="polite"
+        class="text-center text-sm text-gray-500 dark:text-gray-400 min-h-[1.25rem]"
+      ></p>
+
     </div>
-    
-    <div class="right-column">
-      <div id="threeDContainer"></div>
+
+    <!-- Right column: 3D preview -->
+    <div class="w-full lg:w-1/2 flex flex-col gap-2">
+      <div class="glass rounded-2xl overflow-hidden">
+        <div id="threeDContainer"></div>
+      </div>
+      <p class="text-center text-xs text-gray-400 dark:text-gray-500">3D Sigil Preview — rotates automatically</p>
     </div>
-  </div>
+
+  </main>
 
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const intentionInput = document.getElementById('intentionInput');
-    const createSigilBtn = document.getElementById('createSigil');
-    const clearCanvasBtn = document.getElementById('clearCanvas');
+    // ── Theme toggle ──────────────────────────────────────────────────
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon   = document.getElementById('themeIcon');
+
+    function applyTheme(isDark) {
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        themeIcon.textContent = '🌙';
+        localStorage.setItem('sc-theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        themeIcon.textContent = '☀️';
+        localStorage.setItem('sc-theme', 'light');
+      }
+    }
+
+    // Sync icon to current state set by the pre-render snippet
+    applyTheme(document.documentElement.classList.contains('dark'));
+
+    themeToggle.addEventListener('click', () => {
+      applyTheme(!document.documentElement.classList.contains('dark'));
+    });
+
+    // ── Accessibility helper ──────────────────────────────────────────
+    const a11yLive = document.getElementById('a11y-live');
+    function announce(msg) {
+      a11yLive.textContent = '';
+      requestAnimationFrame(() => { a11yLive.textContent = msg; });
+    }
+
+    // ── Canvas drawing ────────────────────────────────────────────────
+    const canvas          = document.getElementById('canvas');
+    const ctx             = canvas.getContext('2d');
+    const intentionInput  = document.getElementById('intentionInput');
+    const createSigilBtn  = document.getElementById('createSigil');
+    const clearCanvasBtn  = document.getElementById('clearCanvas');
     const releaseSigilBtn = document.getElementById('releaseSigil');
     const intentionDisplay = document.getElementById('intentionDisplay');
-    
+
     let isDrawing = false;
     let lastX = 0;
     let lastY = 0;
     let points = [];
-    
+
     function resizeCanvas() {
       const container = document.getElementById('canvas-container');
       const size = container.offsetWidth;
-      canvas.width = size;
+      canvas.width  = size;
       canvas.height = size;
       ctx.strokeStyle = '#03DAC6';
-      ctx.lineJoin = 'round';
-      ctx.lineCap = 'round';
-      ctx.lineWidth = 3;
+      ctx.lineJoin    = 'round';
+      ctx.lineCap     = 'round';
+      ctx.lineWidth   = 3;
     }
-    
+
     function resizeRenderer() {
       const container = document.getElementById('threeDContainer');
       const size = container.offsetWidth;
@@ -203,38 +239,36 @@
       camera.aspect = 1;
       camera.updateProjectionMatrix();
     }
-    
+
     window.addEventListener('resize', () => {
       resizeCanvas();
       resizeRenderer();
     });
-    
+
     function getCoordinates(event) {
-      const rect = canvas.getBoundingClientRect();
-      const scaleX = canvas.width / rect.width;
+      const rect   = canvas.getBoundingClientRect();
+      const scaleX = canvas.width  / rect.width;
       const scaleY = canvas.height / rect.height;
-      
       if (event.touches && event.touches[0]) {
         return {
           x: (event.touches[0].clientX - rect.left) * scaleX,
-          y: (event.touches[0].clientY - rect.top) * scaleY
-        };
-      } else {
-        return {
-          x: (event.clientX - rect.left) * scaleX,
-          y: (event.clientY - rect.top) * scaleY
+          y: (event.touches[0].clientY - rect.top)  * scaleY
         };
       }
+      return {
+        x: (event.clientX - rect.left) * scaleX,
+        y: (event.clientY - rect.top)  * scaleY
+      };
     }
-    
+
     function startDrawing(e) {
       e.preventDefault();
       isDrawing = true;
       const { x, y } = getCoordinates(e);
       [lastX, lastY] = [x, y];
-      points.push(new THREE.Vector3(x - canvas.width/2, -(y - canvas.height/2), 0));
+      points.push(new THREE.Vector3(x - canvas.width / 2, -(y - canvas.height / 2), 0));
     }
-    
+
     function draw(e) {
       e.preventDefault();
       if (!isDrawing) return;
@@ -244,106 +278,92 @@
       ctx.lineTo(x, y);
       ctx.stroke();
       [lastX, lastY] = [x, y];
-      points.push(new THREE.Vector3(x - canvas.width/2, -(y - canvas.height/2), 0));
+      points.push(new THREE.Vector3(x - canvas.width / 2, -(y - canvas.height / 2), 0));
     }
-    
+
     function endDrawing(e) {
       e.preventDefault();
       isDrawing = false;
     }
-    
+
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', endDrawing);
-    canvas.addEventListener('mouseout', endDrawing);
-    
+    canvas.addEventListener('mouseup',   endDrawing);
+    canvas.addEventListener('mouseout',  endDrawing);
     canvas.addEventListener('touchstart', startDrawing);
-    canvas.addEventListener('touchmove', draw);
-    canvas.addEventListener('touchend', endDrawing);
-    
-    // Three.js setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ alpha: true });
-    
+    canvas.addEventListener('touchmove',  draw);
+    canvas.addEventListener('touchend',   endDrawing);
+
+    // ── Three.js setup ────────────────────────────────────────────────
+    const scene    = new THREE.Scene();
+    const camera   = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+
     document.getElementById('threeDContainer').appendChild(renderer.domElement);
-    
     camera.position.z = 250;
-    
+
     const material = new THREE.LineBasicMaterial({ color: 0x03DAC6 });
     let line;
-    
+
     function animate() {
       requestAnimationFrame(animate);
-      if (line) {
-        line.rotation.y += 0.01;
-      }
+      if (line) line.rotation.y += 0.01;
       renderer.render(scene, camera);
     }
-    
+
+    // ── Button handlers ───────────────────────────────────────────────
     createSigilBtn.addEventListener('click', () => {
       const intention = intentionInput.value.trim();
       if (intention && points.length > 1) {
         intentionDisplay.textContent = `Current Intention: ${intention}`;
-        
-        // Create 3D sigil
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         line = new THREE.Line(geometry, material);
         scene.clear();
         scene.add(line);
-        
-        // Reset 2D canvas
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         points = [];
+        announce(`Sigil created for intention: ${intention}`);
       }
     });
-    
+
     clearCanvasBtn.addEventListener('click', () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       intentionDisplay.textContent = '';
       intentionInput.value = '';
       points = [];
       scene.clear();
+      line = null;
+      announce('Canvas cleared.');
     });
-    
+
     releaseSigilBtn.addEventListener('click', () => {
       if (line) {
         const tl = gsap.timeline();
-        tl.to(line.scale, { x: 0, y: 0, z: 0, duration: 1.5, ease: "power2.in" })
-          .to(line.position, { y: 300, duration: 1, ease: "power2.in" }, "-=1")
+        tl.to(line.scale,    { x: 0, y: 0, z: 0, duration: 1.5, ease: 'power2.in' })
+          .to(line.position, { y: 300,           duration: 1,   ease: 'power2.in' }, '-=1')
           .call(() => {
             scene.clear();
+            line = null;
             intentionDisplay.textContent = '';
             intentionInput.value = '';
+            announce('Sigil released.');
           });
       }
     });
 
-    // Smooth scroll for mobile
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-      anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-          behavior: 'smooth'
-        });
-      });
-    });
-
-    // Prevent default touch behavior
-    document.addEventListener('touchmove', function(e) {
+    // ── Touch / scroll handling ───────────────────────────────────────
+    document.addEventListener('touchmove', function (e) {
       e.preventDefault();
     }, { passive: false });
 
-    // Enable scroll on touch for the body
-    document.body.addEventListener('touchmove', function(e) {
+    document.body.addEventListener('touchmove', function (e) {
       e.stopPropagation();
     }, { passive: true });
 
-    // Initial setup
+    // ── Initial setup ─────────────────────────────────────────────────
     resizeCanvas();
     resizeRenderer();
     animate();
   </script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-</body></html>
+</body>
+</html>
